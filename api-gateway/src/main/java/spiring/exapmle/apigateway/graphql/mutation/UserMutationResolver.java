@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.stereotype.Controller;
+import spiring.exapmle.apigateway.client.AuthServiceClient;
 import spiring.exapmle.apigateway.client.UserServiceClient;
 import spiring.exapmle.apigateway.dto.*;
 
@@ -12,15 +13,16 @@ import spiring.exapmle.apigateway.dto.*;
 public class UserMutationResolver {
 
     private final UserServiceClient userServiceClient;
+    private final AuthServiceClient authServiceClient;
 
     @MutationMapping
     public AuthPayloadDto register(@Argument RegisterInputDto input) {
-        return userServiceClient.register(input);
+        return authServiceClient.register(input);
     }
 
     @MutationMapping
     public AuthPayloadDto login(@Argument LoginInputDto input) {
-        return userServiceClient.login(input);
+        return authServiceClient.login(input);
     }
 
     @MutationMapping

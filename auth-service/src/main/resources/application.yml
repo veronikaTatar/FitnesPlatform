@@ -1,0 +1,23 @@
+server:
+  port: 8085
+
+spring:
+  application:
+    name: auth-service
+  datasource:
+    url: ${AUTH_DB_URL:jdbc:mysql://localhost:3310/auth_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${AUTH_DB_USERNAME:root}
+    password: ${AUTH_DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+security:
+  jwt:
+    secret: ${JWT_SECRET:fitness-platform-development-secret-key-change-me-2026}
+    expiration-ms: ${JWT_EXPIRATION_MS:3600000}

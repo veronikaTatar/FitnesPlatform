@@ -1,0 +1,14 @@
+CREATE TABLE auth_role (
+    id_role BIGINT AUTO_INCREMENT PRIMARY KEY,
+    name VARCHAR(30) NOT NULL UNIQUE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE auth_user (
+    id_user BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id_role BIGINT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    email VARCHAR(150) NOT NULL UNIQUE,
+    password_hash VARCHAR(100) NOT NULL,
+    phone VARCHAR(20),
+    CONSTRAINT fk_auth_user_role FOREIGN KEY (id_role) REFERENCES auth_role(id_role)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

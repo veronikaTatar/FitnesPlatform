@@ -1,4 +1,5 @@
 @echo off
+start "Auth Service" /D "auth-service" mvn spring-boot:run
 start "User Service" /D "user-service" mvn spring-boot:run
 start "Workout Service" /D "workout-service" mvn spring-boot:run
 start "Booking Service" /D "booking-service" mvn spring-boot:run

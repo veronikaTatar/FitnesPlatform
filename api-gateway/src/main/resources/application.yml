@@ -24,3 +24,7 @@ logging:
   level:
     org.springframework.graphql: DEBUG
     org.springframework.web: INFO
+
+services:
+  auth:
+    url: ${AUTH_SERVICE_URL:http://localhost:8085}
