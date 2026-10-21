@@ -9,6 +9,7 @@ import org.springframework.web.client.RestClient;
 import spiring.exapmle.apigateway.dto.AuthPayloadDto;
 import spiring.exapmle.apigateway.dto.LoginInputDto;
 import spiring.exapmle.apigateway.dto.RegisterInputDto;
+import spiring.exapmle.apigateway.dto.SessionUserDto;
 
 @Service
 public class RestAuthServiceClient implements AuthServiceClient {
@@ -35,22 +36,36 @@ public class RestAuthServiceClient implements AuthServiceClient {
         return post("/api/auth/login", input);
     }
 
+    @Override
+    public SessionUserDto validateSession(String authorizationHeader) {
+        return restClient.get()
+                .uri("/api/auth/session")
+                .header("Authorization", authorizationHeader == null ? "" : authorizationHeader)
+                .exchange((httpRequest, httpResponse) -> {
+                    if (httpResponse.getStatusCode().isError()) {
+                        throw new IllegalArgumentException(readProblemDetail(httpResponse));
+                    }
+                    return objectMapper.readValue(httpResponse.getBody(), SessionUserDto.class);
+                });
+    }
+
     private AuthPayloadDto post(String uri, Object request) {
         return restClient.post()
                 .uri(uri)
                 .body(request)
                 .exchange((httpRequest, httpResponse) -> {
                     if (httpResponse.getStatusCode().isError()) {
-                        ProblemDetail problem = objectMapper.readValue(
-                                httpResponse.getBody(), ProblemDetail.class);
-                        String detail = problem.getDetail();
-                        throw new IllegalArgumentException(
-                                detail == null || detail.isBlank()
-                                        ? "Authentication request failed"
-                                        : detail);
+                        throw new IllegalArgumentException(readProblemDetail(httpResponse));
                     }
                     return objectMapper.readValue(
                             httpResponse.getBody(), AuthPayloadDto.class);
                 });
+    }
+
+    private String readProblemDetail(org.springframework.http.client.ClientHttpResponse response)
+            throws java.io.IOException {
+        ProblemDetail problem = objectMapper.readValue(response.getBody(), ProblemDetail.class);
+        String detail = problem.getDetail();
+        return detail == null || detail.isBlank() ? "Authentication request failed" : detail;
     }
 }

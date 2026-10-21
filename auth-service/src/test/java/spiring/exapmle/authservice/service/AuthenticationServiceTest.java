@@ -23,11 +23,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class AuthenticationServiceTest {
     @Mock AuthUserRepository userRepository;
     @Mock RoleRepository roleRepository;
+    @Mock SessionService sessionService;
 
     private AuthenticationService service;
     private Role clientRole;
@@ -40,7 +42,7 @@ class AuthenticationServiceTest {
         JwtService jwtService = new JwtService(
                 "test-secret-key-with-at-least-thirty-two-bytes", 3_600_000);
         service = new AuthenticationService(
-                userRepository, roleRepository, new BCryptPasswordEncoder(), jwtService);
+                userRepository, roleRepository, new BCryptPasswordEncoder(), jwtService, sessionService);
     }
 
     @Test
@@ -59,6 +61,8 @@ class AuthenticationServiceTest {
         assertThat(response.token()).isNotBlank();
         assertThat(response.user().email()).isEqualTo("new@fit.by");
         assertThat(response.user().role().name()).isEqualTo("client");
+        verify(sessionService).createSession(org.mockito.ArgumentMatchers.eq(response.token()),
+                org.mockito.ArgumentMatchers.any(AuthUser.class));
     }
 
     @Test

@@ -24,6 +24,7 @@ public class AuthenticationService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final SessionService sessionService;
 
     @Transactional
     public AuthResponse register(RegisterRequest request) {
@@ -56,7 +57,9 @@ public class AuthenticationService {
     }
 
     private AuthResponse responseFor(AuthUser user) {
-        return new AuthResponse(jwtService.generateToken(user), UserResponse.from(user));
+        String token = jwtService.generateToken(user);
+        sessionService.createSession(token, user);
+        return new AuthResponse(token, UserResponse.from(user));
     }
 
     private AuthException invalidCredentials() {
