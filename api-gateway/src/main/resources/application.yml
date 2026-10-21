@@ -1,0 +1,26 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: api-gateway
+  graphql:
+    graphiql:
+      enabled: true
+      path: /graphiql
+    schema:
+      locations: classpath:graphql/
+      printer:
+        enabled: true
+    exception-handling:
+      include-message: always
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 2000ms
+
+logging:
+  level:
+    org.springframework.graphql: DEBUG
+    org.springframework.web: INFO

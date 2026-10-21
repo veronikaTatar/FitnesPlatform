@@ -1,0 +1,55 @@
+syntax = "proto3";
+package booking_service;
+option java_package = "com.fitness.booking.grpc";
+option java_multiple_files = true;
+
+service BookingService {
+  rpc GetBooking(GetBookingRequest) returns (BookingResponse);
+  rpc GetClientBookings(GetClientBookingsRequest) returns (BookingListResponse);
+  rpc GetActiveSubscription(GetActiveSubscriptionRequest) returns (SubscriptionResponse);
+  rpc GetPayment(GetPaymentRequest) returns (PaymentResponse);
+}
+
+enum BookingStatus {
+  BOOKING_STATUS_UNKNOWN = 0;
+  ACTIVE = 1;
+  CANCELLED = 2;
+}
+
+enum PaymentStatus {
+  PAYMENT_STATUS_UNKNOWN = 0;
+  PENDING = 1;
+  CONFIRMED = 2;
+  FAILED = 3;
+}
+
+message GetBookingRequest { int32 id_booking = 1; }
+message GetClientBookingsRequest { int32 id_client = 1; string status = 2; }
+message GetActiveSubscriptionRequest { int32 id_client = 1; }
+message GetPaymentRequest { int32 id_payment = 1; }
+
+message BookingResponse {
+  int32 id_booking = 1;
+  int32 id_client = 2;
+  int32 id_workout = 3;
+  BookingStatus status = 4;
+  string booking_date = 5;
+}
+
+message BookingListResponse { repeated BookingResponse bookings = 1; }
+
+message SubscriptionResponse {
+  int32 id_subscription = 1;
+  int32 id_client = 2;
+  string status = 3;
+  int32 remaining_sessions = 4;
+  string end_date = 5;
+}
+
+message PaymentResponse {
+  int32 id_payment = 1;
+  int32 id_client = 2;
+  double amount = 3;
+  PaymentStatus status = 4;
+  string payment_date = 5;
+}

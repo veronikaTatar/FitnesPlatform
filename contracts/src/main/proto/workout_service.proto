@@ -1,0 +1,49 @@
+syntax = "proto3";
+package workout_service;
+option java_package = "com.fitness.workout.grpc";
+option java_multiple_files = true;
+
+service WorkoutService {
+  rpc GetWorkout(GetWorkoutRequest) returns (WorkoutResponse);
+  rpc CheckAvailability(CheckAvailabilityRequest) returns (CheckAvailabilityResponse);
+  rpc ReserveSlot(ReserveSlotRequest) returns (ReserveSlotResponse);
+  rpc ReleaseSlot(ReleaseSlotRequest) returns (ReleaseSlotResponse);
+  rpc GetTrainingProgram(GetProgramRequest) returns (ProgramResponse);
+}
+
+enum WorkoutStatus {
+  WORKOUT_STATUS_UNKNOWN = 0;
+  PLANNED = 1;
+  CANCELLED = 2;
+  COMPLETED = 3;
+}
+
+message GetWorkoutRequest { int32 id_workout = 1; }
+message CheckAvailabilityRequest { int32 id_workout = 1; }
+message ReserveSlotRequest { int32 id_workout = 1; }
+message ReleaseSlotRequest { int32 id_workout = 1; }
+message GetProgramRequest { int32 id_program = 1; }
+
+message WorkoutResponse {
+  int32 id_workout = 1;
+  int32 id_training_program = 2;
+  int32 id_trainer = 3;
+  string start_datetime = 4;
+  int32 duration = 5;
+  WorkoutStatus status = 6;
+  int32 max_capacity = 7;
+  int32 booked_count = 8;
+}
+
+message CheckAvailabilityResponse { bool available = 1; int32 free_slots = 2; }
+message ReserveSlotResponse { bool success = 1; int32 remaining = 2; }
+message ReleaseSlotResponse { bool success = 1; int32 remaining = 2; }
+
+message ProgramResponse {
+  int32 id_training_program = 1;
+  string name = 2;
+  string type = 3;
+  string difficulty_level = 4;
+  int32 duration = 5;
+  int32 id_trainer = 6;
+}

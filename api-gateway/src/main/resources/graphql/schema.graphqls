@@ -1,0 +1,315 @@
+type Query {
+    me: User
+    user(id: ID!): User
+    users(role: String, search: String): [User!]!
+
+    trainingPrograms(
+        type: String,
+        difficultyLevel: String,
+        trainerId: ID,
+        sortBy: String,
+        sortOrder: String
+    ): [TrainingProgram!]!
+    trainingProgram(id: ID!): TrainingProgram
+
+    workout(id: ID!): Workout
+    workouts(
+        trainerId: ID,
+        programId: ID,
+        dateFrom: String,
+        dateTo: String,
+        status: String,
+        sortBy: String,
+        sortOrder: String
+    ): [Workout!]!
+    myBookings(
+        status: String,
+        sortBy: String,
+        sortOrder: String
+    ): [Booking!]!
+
+    bookings(
+        clientId: ID,
+        workoutId: ID
+    ): [Booking!]!
+    booking(id: ID!): Booking
+    mySubscriptions(status: String, sortBy: String, sortOrder: String): [Subscription!]!
+    subscription(id: ID!): Subscription
+    myPayments(dateFrom: String, dateTo: String): [Payment!]!
+
+    myProgress(dateFrom: String, dateTo: String): [Progress!]!
+    clientProgress(clientId: ID!): [Progress!]!
+
+    myNotifications(isRead: Boolean): [Notification!]!
+
+    """Показать посещаемость по дням"""
+    attendanceStats(dateFrom: String!, dateTo: String!): [AttendanceStats!]!
+    """Показать выручку по дням"""
+    revenueStats(dateFrom: String!, dateTo: String!): [RevenueStats!]!
+    programPopularity(period: String!): [ProgramPopularity!]!
+
+    """Показать сводный отчёт одним запросом"""
+    aggregatedStats(dateFrom: String!, dateTo: String!): AggregatedStats!
+}
+
+
+"""
+Пользователи и роли
+Поля client и trainer у типа User — опциональные (null), так как пользователь может иметь только один профиль в зависимости от роли.
+"""
+type User {
+    idUser: ID!
+    name: String!
+    email: String!
+    phone: String
+    role: Role!
+    client: Client
+    trainer: Trainer
+}
+
+type Role {
+    idRole: ID!
+    name: String!
+}
+
+type Client {
+    idClient: ID!
+    birthDate: String
+    fitnessLevel: String
+}
+
+type Trainer {
+    idTrainer: ID!
+    specialization: String
+    rating: Float
+}
+
+
+"""
+Профессиональный профиль тренера
+Доп. поле availableSlots у Workout не хранится в БД - позволяет видеть актуальное количество свободных мест без отдельного запроса.
+"""
+type TrainingProgram {
+    idTrainingProgram: ID!
+    name: String!
+    description: String
+    type: String!
+    difficultyLevel: String!
+    duration: Int!
+    trainer: Trainer
+}
+
+type Workout {
+    idWorkout: ID!
+    startDatetime: String!
+    duration: Int!
+    status: String!
+    maxCapacity: Int!
+    trainingProgram: TrainingProgram!
+    trainer: Trainer
+}
+
+"""
+Записи, абонементы и платежи
+Поля client, workout, subscription — это ссылки на объекты других сервисов. API Gateway при формировании ответа выполняет gRPC-вызовы к соответствующим сервисам и агрегирует данные в единый объект.
+"""
+type Booking {
+    idBooking: ID!
+    status: String!
+    bookingDate: String!
+    client: Client!
+    workout: Workout!
+}
+
+type Subscription {
+    idSubscription: ID!
+    subscriptionTypeId: Int!
+    startDate: String!
+    endDate: String!
+    status: String!
+    remainingSessions: Int!
+    client: Client!
+}
+
+type Payment {
+    idPayment: ID!
+    amount: Float!
+    paymentDate: String!
+    status: String!
+    client: Client!
+    subscription: Subscription
+}
+
+
+"""
+Прогресс и уведомления
+"""
+type Progress {
+    idProgress: ID!
+    date: String!
+    value: Float
+    trainerComment: String
+    client: Client!
+}
+
+type Notification {
+    idNotification: ID!
+    text: String!
+    date: String!
+    isRead: Boolean!
+    type: String!
+}
+
+
+"""
+Аналитические типы
+Аналитические типы доступны только пользователям с ролью admin. Проверка прав выполняется на уровне API Gateway перед передачей запроса в Analytics Service.
+"""
+
+type AggregatedStats {
+totalBookings: Int!
+totalAttendance: Int!
+totalRevenue: Float!
+subscriptionRevenue: Float!
+paymentCount: Int!
+averageAttendance: Float!
+topPrograms: [ProgramPopularity!]!
+}
+
+type AttendanceStats {
+    date: String!
+    workoutCount: Int!
+    bookingCount: Int!
+    attendanceCount: Int!
+}
+
+type RevenueStats {
+    date: String!
+    totalRevenue: Float!
+    subscriptionRevenue: Float!
+    paymentCount: Int!
+}
+
+type ProgramPopularity {
+    idTrainingProgram: ID!
+    bookingCount: Int!
+    period: String!
+}
+
+"""
+Служебный тип
+Используется для возврата результата аутентификации: JWT-токена и данных пользователя
+"""
+type AuthPayload {
+    token: String!
+    user: User!
+}
+
+input RegisterInput {
+    name: String!
+    email: String!
+    password: String!
+    phone: String
+    role: String!          # client | trainer
+    birthDate: String
+    fitnessLevel: String
+    specialization: String
+}
+
+input LoginInput {
+    email: String!
+    password: String!
+}
+
+input UpdateProfileInput {
+    name: String
+    phone: String
+    birthDate: String
+    fitnessLevel: String
+    specialization: String
+}
+
+input CreateTrainingProgramInput {
+    name: String!
+    description: String
+    type: String!
+    difficultyLevel: String!
+    duration: Int!
+}
+
+input UpdateTrainingProgramInput {
+    name: String
+    description: String
+    type: String
+    difficultyLevel: String
+    duration: Int
+}
+
+input CreateWorkoutInput {
+    idTrainingProgram: ID!
+    startDatetime: String!
+    duration: Int!
+    maxCapacity: Int!
+}
+
+input UpdateWorkoutInput {
+    startDatetime: String
+    duration: Int
+    maxCapacity: Int
+}
+
+input CreateSubscriptionInput {
+    subscriptionTypeId: Int!
+    startDate: String!
+}
+
+input RegisterPaymentInput {
+    amount: Float!
+    idSubscription: ID
+    paymentDate: String
+}
+
+input LogProgressInput {
+    idClient: ID!
+    idBooking: ID!
+    value: Float
+    trainerComment: String
+}
+
+type Mutation {
+    # Аутентификация и управление профилем
+    register(input: RegisterInput!): AuthPayload!
+    login(input: LoginInput!): AuthPayload!
+    logout: Boolean!
+    updateProfile(input: UpdateProfileInput!): User!
+    updateUserRole(idUser: ID!, roleName: String!): User!
+    blockUser(idUser: ID!, blocked: Boolean!): User!
+
+    # Тренировочные программы (тренер)
+    createTrainingProgram(input: CreateTrainingProgramInput!): TrainingProgram!
+    updateTrainingProgram(idTrainingProgram: ID!, input: UpdateTrainingProgramInput!): TrainingProgram!
+    archiveTrainingProgram(idTrainingProgram: ID!): Boolean!
+
+    # Расписание (тренер/админ)
+    createWorkout(input: CreateWorkoutInput!): Workout!
+    updateWorkout(idWorkout: ID!, input: UpdateWorkoutInput!): Workout!
+    changeWorkoutStatus(idWorkout: ID!, status: String!): Workout!
+
+    # Запись на занятие (клиент)
+    bookWorkout(workoutId: ID!): Booking!
+    cancelBooking(bookingId: ID!): Booking!
+
+    # Абонементы (клиент/админ)
+    createSubscription(input: CreateSubscriptionInput!): Subscription!
+    changeSubscriptionStatus(idSubscription: ID!, status: String!): Subscription!
+
+    # Платежи
+    registerPayment(input: RegisterPaymentInput!): Payment!
+
+    # Прогресс (тренер)
+    logProgress(input: LogProgressInput!): Progress!
+
+    # Уведомления
+    markNotificationRead(idNotification: ID!): Notification!
+    markAllNotificationsRead: Boolean!
+}

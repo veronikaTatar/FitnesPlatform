@@ -1,0 +1,36 @@
+syntax = "proto3";
+package analytics_service;
+option java_package = "com.fitness.analytics.grpc";
+option java_multiple_files = true;
+
+service AnalyticsService {
+  rpc GetAttendanceStats(StatsPeriodRequest) returns (AttendanceStatsResponse);
+  rpc GetRevenueStats(StatsPeriodRequest) returns (RevenueStatsResponse);
+  rpc GetProgramPopularity(PopularityRequest) returns (PopularityResponse);
+}
+
+message StatsPeriodRequest { string date_from = 1; string date_to = 2; }
+message PopularityRequest { string period = 1; }
+
+message AttendanceStatsResponse { repeated AttendanceStatItem items = 1; }
+message AttendanceStatItem {
+  string date = 1;
+  int32 workout_count = 2;
+  int32 booking_count = 3;
+  int32 attendance_count = 4;
+}
+
+message RevenueStatsResponse { repeated RevenueStatItem items = 1; }
+message RevenueStatItem {
+  string date = 1;
+  double total_revenue = 2;
+  double subscription_revenue = 3;
+  int32 payment_count = 4;
+}
+
+message PopularityResponse { repeated PopularityItem items = 1; }
+message PopularityItem {
+  int32 id_training_program = 1;
+  string program_name = 2;
+  int32 booking_count = 3;
+}

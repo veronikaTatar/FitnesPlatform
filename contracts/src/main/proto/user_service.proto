@@ -1,0 +1,52 @@
+syntax = "proto3";
+package user_service;
+option java_package = "com.fitness.user.grpc";
+option java_multiple_files = true;
+
+service UserService {
+  rpc GetUser(GetUserRequest) returns (UserResponse);
+  rpc GetClient(GetClientRequest) returns (ClientResponse);
+  rpc GetTrainer(GetTrainerRequest) returns (TrainerResponse);
+  rpc CheckUserExists(CheckUserExistsRequest) returns (CheckUserExistsResponse);
+  rpc GetUsersByIds(GetUsersByIdsRequest) returns (GetUsersByIdsResponse);
+}
+
+enum UserRole {
+  USER_ROLE_UNKNOWN = 0;
+  CLIENT = 1;
+  TRAINER = 2;
+  ADMIN = 3;
+}
+
+message GetUserRequest { int32 id_user = 1; }
+message GetClientRequest { int32 id_client = 1; }
+message GetTrainerRequest { int32 id_trainer = 1; }
+message CheckUserExistsRequest { string email = 1; }
+message GetUsersByIdsRequest { repeated int32 ids = 1; }
+
+message UserResponse {
+  int32 id_user = 1;
+  string name = 2;
+  string email = 3;
+  string phone = 4;
+  UserRole role = 5;
+}
+
+message ClientResponse {
+  int32 id_client = 1;
+  int32 id_user = 2;
+  string name = 3;
+  string birth_date = 4;
+  string fitness_level = 5;
+}
+
+message TrainerResponse {
+  int32 id_trainer = 1;
+  int32 id_user = 2;
+  string name = 3;
+  string specialization = 4;
+  double rating = 5;
+}
+
+message CheckUserExistsResponse { bool exists = 1; }
+message GetUsersByIdsResponse { repeated UserResponse users = 1; }
