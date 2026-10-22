@@ -210,7 +210,7 @@ public class MockBookingServiceClient implements BookingServiceClient {
     // ================== Бизнес-операции (ЛР4) ==================
 
     @Override
-    public BookingDto bookWorkout(Long workoutId) {
+    public BookingDto bookWorkout(Long clientId, Long workoutId) {
         WorkoutDto workout = workouts.stream()
                 .filter(w -> workoutId.equals(w.getIdWorkout()))
                 .findFirst()
@@ -232,8 +232,6 @@ public class MockBookingServiceClient implements BookingServiceClient {
                     "No free slots for workout: " + workoutId);
         }
 
-        // Проверка активного абонемента клиента (в ЛР5 — из JWT)
-        Long clientId = 1L;
         SubscriptionDto activeSubscription = subscriptions.stream()
                 .filter(s -> s.getClient() != null
                         && clientId.equals(s.getClient().getIdClient())
@@ -261,7 +259,7 @@ public class MockBookingServiceClient implements BookingServiceClient {
     }
 
     @Override
-    public BookingDto cancelBooking(Long bookingId) {
+    public BookingDto cancelBooking(Long clientId, Long bookingId) {
         BookingDto booking = bookings.stream()
                 .filter(b -> bookingId.equals(b.getIdBooking()))
                 .findFirst()
@@ -272,9 +270,11 @@ public class MockBookingServiceClient implements BookingServiceClient {
             throw new RuntimeException(
                     "Only active bookings can be cancelled");
         }
+        if (!clientId.equals(booking.getClient().getIdClient())) {
+            throw new RuntimeException("Booking does not belong to authenticated client");
+        }
 
         booking.setStatus("CANCELLED");
-        Long clientId = booking.getClient().getIdClient();
         subscriptions.stream()
                 .filter(s -> s.getClient() != null
                         && clientId.equals(s.getClient().getIdClient())
@@ -287,15 +287,13 @@ public class MockBookingServiceClient implements BookingServiceClient {
     }
 
     @Override
-    public SubscriptionDto createSubscription(CreateSubscriptionInputDto input) {
+    public SubscriptionDto createSubscription(Long clientId, CreateSubscriptionInputDto input) {
         if (input.getSubscriptionTypeId() == null) {
             throw new RuntimeException("Subscription type is required");
         }
         if (input.getStartDate() == null) {
             throw new RuntimeException("Start date is required");
         }
-
-        Long clientId = 1L; // в ЛР5 — из JWT
 
         // Проверка: у клиента не должно быть активного абонемента
         boolean hasActive = subscriptions.stream()

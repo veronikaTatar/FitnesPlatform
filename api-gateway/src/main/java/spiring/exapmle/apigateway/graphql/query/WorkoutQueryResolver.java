@@ -2,12 +2,16 @@ package spiring.exapmle.apigateway.graphql.query;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
+import org.springframework.graphql.data.method.annotation.ContextValue;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.stereotype.Controller;
 import spiring.exapmle.apigateway.client.WorkoutServiceClient;
+import spiring.exapmle.apigateway.config.AuthenticatedUserContext;
+import spiring.exapmle.apigateway.config.GraphQlAuthenticationInterceptor;
 import spiring.exapmle.apigateway.dto.ProgressDto;
 import spiring.exapmle.apigateway.dto.TrainingProgramDto;
 import spiring.exapmle.apigateway.dto.WorkoutDto;
+import spiring.exapmle.apigateway.dto.SessionUserDto;
 
 import java.util.List;
 
@@ -56,9 +60,11 @@ public class WorkoutQueryResolver {
     @QueryMapping
     public List<ProgressDto> myProgress(
             @Argument String dateFrom,
-            @Argument String dateTo) {
-        // временно: clientId = 1 (в ЛР5 будет браться из сессии)
-        return workoutServiceClient.getProgressByClientAndPeriod(1L, dateFrom, dateTo);
+            @Argument String dateTo,
+            @ContextValue(GraphQlAuthenticationInterceptor.AUTHENTICATED_USER_CONTEXT_KEY)
+            SessionUserDto authenticatedUser) {
+        return workoutServiceClient.getProgressByClientAndPeriod(
+                AuthenticatedUserContext.require(authenticatedUser).userId(), dateFrom, dateTo);
     }
 
     @QueryMapping

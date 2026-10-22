@@ -14,9 +14,9 @@ public interface BookingServiceClient {
 
     List<PaymentDto> getPaymentsByClient(Long clientId, String dateFrom, String dateTo);
     // ЛР4 Mutation-методы
-    BookingDto bookWorkout(Long workoutId);
-    BookingDto cancelBooking(Long bookingId);
-    SubscriptionDto createSubscription(CreateSubscriptionInputDto input);
+    BookingDto bookWorkout(Long clientId, Long workoutId);
+    BookingDto cancelBooking(Long clientId, Long bookingId);
+    SubscriptionDto createSubscription(Long clientId, CreateSubscriptionInputDto input);
     SubscriptionDto changeSubscriptionStatus(Long id, String status);
     PaymentDto registerPayment(RegisterPaymentInputDto input);
 
