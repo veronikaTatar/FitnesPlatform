@@ -11,6 +11,7 @@ import java.util.List;
 public interface WorkoutRepository extends JpaRepository<Workout, Long> {
     List<Workout> findByIdTrainer(Long idTrainer);
     List<Workout> findByTrainingProgram_IdTrainingProgram(Long idProgram);
+    boolean existsByTrainingProgram_IdTrainingProgram(Long idProgram);
     List<Workout> findByStartDatetimeBetween(LocalDateTime from, LocalDateTime to);
     List<Workout> findByStatus(String status);
     List<Workout> findByIdTrainerAndStartDatetimeBetween(Long idTrainer, LocalDateTime from, LocalDateTime to);

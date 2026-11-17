@@ -41,6 +41,71 @@ public class WorkoutGrpcController extends WorkoutServiceGrpc.WorkoutServiceImpl
     }
 
     @Override
+    public void createTrainingProgram(CreateTrainingProgramRequest request, StreamObserver<ProgramResponse> observer) {
+        respond(observer, () -> {
+            TrainingProgram program = new TrainingProgram();
+            program.setIdTrainer(request.getTrainerId());
+            program.setName(request.getName());
+            program.setDescription(request.getDescription());
+            program.setType(request.getType());
+            program.setDifficultyLevel(request.getDifficultyLevel());
+            program.setDuration(request.getDuration());
+            return toProgram(workoutService.createProgram(program));
+        });
+    }
+
+    @Override
+    public void updateTrainingProgram(UpdateTrainingProgramRequest request, StreamObserver<ProgramResponse> observer) {
+        respond(observer, () -> {
+            TrainingProgram patch = new TrainingProgram();
+            patch.setName(blankToNull(request.getName()));
+            patch.setDescription(request.getDescription());
+            patch.setType(blankToNull(request.getType()));
+            patch.setDifficultyLevel(blankToNull(request.getDifficultyLevel()));
+            patch.setDuration(request.getDuration() == 0 ? null : request.getDuration());
+            return toProgram(workoutService.updateProgram(request.getIdProgram(), patch));
+        });
+    }
+
+    @Override
+    public void archiveTrainingProgram(GetProgramRequest request, StreamObserver<OperationResponse> observer) {
+        respond(observer, () -> {
+            workoutService.archiveProgram(request.getIdProgram());
+            return OperationResponse.newBuilder().setSuccess(true).build();
+        });
+    }
+
+    @Override
+    public void createWorkout(CreateWorkoutRequest request, StreamObserver<WorkoutResponse> observer) {
+        respond(observer, () -> toWorkout(workoutService.createWorkout(
+                request.getProgramId(), LocalDateTime.parse(request.getStartDatetime()),
+                request.getDuration(), request.getMaxCapacity())));
+    }
+
+    @Override
+    public void updateWorkout(UpdateWorkoutRequest request, StreamObserver<WorkoutResponse> observer) {
+        respond(observer, () -> toWorkout(workoutService.updateWorkout(
+                request.getIdWorkout(), request.getStartDatetime().isBlank() ? null
+                        : LocalDateTime.parse(request.getStartDatetime()),
+                request.getDuration() == 0 ? null : request.getDuration(),
+                request.getMaxCapacity() == 0 ? null : request.getMaxCapacity())));
+    }
+
+    @Override
+    public void changeWorkoutStatus(ChangeWorkoutStatusRequest request, StreamObserver<WorkoutResponse> observer) {
+        respond(observer, () -> toWorkout(workoutService.changeWorkoutStatus(
+                request.getIdWorkout(), request.getStatus())));
+    }
+
+    @Override
+    public void logProgress(LogProgressRequest request, StreamObserver<ProgressItem> observer) {
+        respond(observer, () -> toProgress(workoutService.logProgress(
+                request.getClientId(), request.getBookingId(),
+                java.math.BigDecimal.valueOf(request.getValue()),
+                blankToNull(request.getTrainerComment()))));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public void getTrainingPrograms(ProgramsRequest request,
                                     StreamObserver<ProgramsResponse> observer) {
@@ -230,6 +295,9 @@ public class WorkoutGrpcController extends WorkoutServiceGrpc.WorkoutServiceImpl
             observer.onError(exception);
         } catch (IllegalArgumentException exception) {
             observer.onError(Status.INVALID_ARGUMENT
+                    .withDescription(exception.getMessage()).asRuntimeException());
+        } catch (IllegalStateException exception) {
+            observer.onError(Status.FAILED_PRECONDITION
                     .withDescription(exception.getMessage()).asRuntimeException());
         } catch (RuntimeException exception) {
             Status status = exception.getMessage() != null

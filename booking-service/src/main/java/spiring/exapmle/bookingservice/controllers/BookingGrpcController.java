@@ -139,6 +139,31 @@ public class BookingGrpcController extends BookingServiceGrpc.BookingServiceImpl
                 request.getIdClient(), request.getIdBooking())));
     }
 
+    @Override
+    public void createSubscription(CreateSubscriptionRequest request,
+                                   StreamObserver<SubscriptionResponse> observer) {
+        respond(observer, () -> toSubscription(bookingService.createSubscription(
+                request.getIdClient(), request.getSubscriptionTypeId(),
+                request.getStartDate().isBlank() ? null : LocalDate.parse(request.getStartDate()))));
+    }
+
+    @Override
+    public void changeSubscriptionStatus(ChangeSubscriptionStatusRequest request,
+                                         StreamObserver<SubscriptionResponse> observer) {
+        respond(observer, () -> toSubscription(bookingService.changeSubscriptionStatus(
+                request.getIdSubscription(), request.getStatus())));
+    }
+
+    @Override
+    public void registerPayment(RegisterPaymentRequest request,
+                                StreamObserver<PaymentResponse> observer) {
+        respond(observer, () -> toPayment(bookingService.registerPayment(
+                request.getIdClient(), BigDecimal.valueOf(request.getAmount()),
+                request.getIdSubscription() == 0 ? null : request.getIdSubscription(),
+                request.getPaymentDate().isBlank() ? null
+                        : LocalDateTime.parse(request.getPaymentDate()))));
+    }
+
     private static BookingResponse toBooking(Booking booking) {
         return BookingResponse.newBuilder()
                 .setIdBooking(booking.getIdBooking())
@@ -198,6 +223,9 @@ public class BookingGrpcController extends BookingServiceGrpc.BookingServiceImpl
         } catch (IllegalArgumentException exception) {
             observer.onError(Status.INVALID_ARGUMENT
                     .withDescription(exception.getMessage()).asRuntimeException());
+        } catch (IllegalStateException exception) {
+            observer.onError(Status.FAILED_PRECONDITION
+                    .withDescription(exception.getMessage()).asRuntimeException());
         } catch (RuntimeException exception) {
             Status status = exception.getMessage() != null
                     && exception.getMessage().toLowerCase(Locale.ROOT).contains("not found")
@@ -205,6 +233,4 @@ public class BookingGrpcController extends BookingServiceGrpc.BookingServiceImpl
             observer.onError(status.withDescription(exception.getMessage()).asRuntimeException());
         }
     }
-}
-public class BookingGrpcController {
 }

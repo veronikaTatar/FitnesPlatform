@@ -22,6 +22,9 @@ import spiring.exapmle.bookingservice.repositories.PaymentRepository;
 import spiring.exapmle.bookingservice.repositories.SubscriptionRepository;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.math.BigDecimal;
+import spiring.exapmle.bookingservice.models.enums.PaymentStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
@@ -222,5 +225,71 @@ public class BookingServiceImpl implements BookingService {
     @Override
     public List<Payment> getPaymentsBySubscription(Long idSubscription) {
         return paymentRepository.findBySubscription_IdSubscription(idSubscription);
+    }
+
+    @Override
+    @Transactional
+    public Subscription createSubscription(Long clientId, Integer typeId, LocalDate startDate) {
+        if (clientId == null || clientId <= 0 || typeId == null || typeId <= 0 || startDate == null) {
+            throw new IllegalArgumentException("Client, subscription type, and start date are required");
+        }
+        if (subscriptionRepository.findFirstByIdClientAndStatusOrderByEndDateDesc(
+                clientId, SubscriptionStatus.ACTIVE).isPresent()) {
+            throw Status.FAILED_PRECONDITION
+                    .withDescription("Client already has an active subscription")
+                    .asRuntimeException();
+        }
+        LocalDate start = startDate;
+        Subscription subscription = new Subscription();
+        subscription.setIdClient(clientId);
+        subscription.setSubscriptionTypeId(typeId);
+        subscription.setStartDate(start);
+        subscription.setEndDate(start.plusDays(90));
+        subscription.setStatus(SubscriptionStatus.PENDING);
+        subscription.setRemainingSessions(0);
+        return subscriptionRepository.save(subscription);
+    }
+
+    @Override
+    @Transactional
+    public Subscription changeSubscriptionStatus(Long id, String status) {
+        Subscription subscription = getSubscriptionById(id);
+        SubscriptionStatus next;
+        try {
+            next = SubscriptionStatus.valueOf(status.toUpperCase(java.util.Locale.ROOT));
+        } catch (RuntimeException exception) {
+            throw new IllegalArgumentException("Unsupported subscription status: " + status);
+        }
+        subscription.setStatus(next);
+        if (next == SubscriptionStatus.ACTIVE && subscription.getRemainingSessions() == 0) {
+            subscription.setRemainingSessions(12);
+        }
+        return subscriptionRepository.save(subscription);
+    }
+
+    @Override
+    @Transactional
+    public Payment registerPayment(Long clientId, BigDecimal amount, Long subscriptionId,
+                                  LocalDateTime paymentDate) {
+        if (clientId == null || clientId <= 0 || amount == null || amount.signum() <= 0) {
+            throw new IllegalArgumentException("Client and positive payment amount are required");
+        }
+        Payment payment = new Payment();
+        payment.setIdClient(clientId);
+        payment.setAmount(amount);
+        payment.setPaymentDate(paymentDate == null ? LocalDateTime.now() : paymentDate);
+        payment.setStatus(PaymentStatus.CONFIRMED);
+        if (subscriptionId != null && subscriptionId > 0) {
+            Subscription subscription = getSubscriptionById(subscriptionId);
+            if (!clientId.equals(subscription.getIdClient())) {
+                throw Status.PERMISSION_DENIED.withDescription("Subscription belongs to another client")
+                        .asRuntimeException();
+            }
+            payment.setSubscription(subscription);
+            subscription.setStatus(SubscriptionStatus.ACTIVE);
+            if (subscription.getRemainingSessions() == 0) subscription.setRemainingSessions(12);
+            subscriptionRepository.save(subscription);
+        }
+        return paymentRepository.save(payment);
     }
 }

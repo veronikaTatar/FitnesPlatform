@@ -3,6 +3,8 @@ package spiring.exapmle.bookingservice.services;
 import spiring.exapmle.bookingservice.models.Booking;
 import spiring.exapmle.bookingservice.models.Payment;
 import spiring.exapmle.bookingservice.models.Subscription;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -24,4 +26,8 @@ public interface BookingService {
     List<Payment> getPaymentsByClient(Long idClient);
     List<Payment> getPaymentsByClientAndPeriod(Long idClient, LocalDateTime from, LocalDateTime to);
     List<Payment> getPaymentsBySubscription(Long idSubscription);
+    Subscription createSubscription(Long clientId, Integer typeId, LocalDate startDate);
+    Subscription changeSubscriptionStatus(Long id, String status);
+    Payment registerPayment(Long clientId, BigDecimal amount, Long subscriptionId,
+                            LocalDateTime paymentDate);
 }
