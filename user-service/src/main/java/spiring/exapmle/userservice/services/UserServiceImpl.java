@@ -67,6 +67,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public Trainer getTrainerByUser(Long idUser) {
+        return trainerRepository.findByUser_IdUser(idUser)
+                .orElseThrow(() -> new RuntimeException(
+                        "Trainer profile for user " + idUser + " not found"));
+    }
+
+    @Override
     public List<Trainer> getTrainersBySpecialization(String specialization) {
         return trainerRepository.findBySpecializationContainingIgnoreCase(specialization);
     }

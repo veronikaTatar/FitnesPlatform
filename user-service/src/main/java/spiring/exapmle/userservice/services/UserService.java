@@ -17,6 +17,7 @@ public interface UserService {
     Client getClientProfile(Long idClient);
     Client getClientByUser(Long idUser);
     Trainer getTrainerProfile(Long idTrainer);
+    Trainer getTrainerByUser(Long idUser);
     List<Trainer> getTrainersBySpecialization(String specialization);
 
     List<Notification> getNotifications(Long idUser);
