@@ -1,5 +1,7 @@
 package spiring.exapmle.apigateway.graphql.query;
 
+import com.fitness.user.grpc.GetClientByEmailRequest;
+import com.fitness.user.grpc.UserServiceGrpc;
 import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.ContextValue;
@@ -12,7 +14,6 @@ import spiring.exapmle.apigateway.dto.BookingDto;
 import spiring.exapmle.apigateway.dto.PaymentDto;
 import spiring.exapmle.apigateway.dto.SubscriptionDto;
 import spiring.exapmle.apigateway.dto.SessionUserDto;
-
 import java.util.List;
 
 @Controller
@@ -20,6 +21,7 @@ import java.util.List;
 public class BookingQueryResolver {
 
     private final BookingServiceClient bookingServiceClient;
+    private final UserServiceGrpc.UserServiceBlockingStub userService;
 
     @QueryMapping
     public List<BookingDto> myBookings(
@@ -28,7 +30,7 @@ public class BookingQueryResolver {
             @Argument String sortOrder,
             @ContextValue(GraphQlAuthenticationInterceptor.AUTHENTICATED_USER_CONTEXT_KEY)
             SessionUserDto authenticatedUser) {
-        Long clientId = AuthenticatedUserContext.require(authenticatedUser).userId();
+        Long clientId = clientId(authenticatedUser);
         return bookingServiceClient.getBookingsByClient(
                 clientId, status, sortBy, sortOrder);
     }
@@ -49,7 +51,7 @@ public class BookingQueryResolver {
             @ContextValue(GraphQlAuthenticationInterceptor.AUTHENTICATED_USER_CONTEXT_KEY)
             SessionUserDto authenticatedUser) {
         return bookingServiceClient.getSubscriptionsByClient(
-                AuthenticatedUserContext.require(authenticatedUser).userId());
+                clientId(authenticatedUser));
     }
 
     @QueryMapping
@@ -63,6 +65,12 @@ public class BookingQueryResolver {
                                        @ContextValue(GraphQlAuthenticationInterceptor.AUTHENTICATED_USER_CONTEXT_KEY)
                                        SessionUserDto authenticatedUser) {
         return bookingServiceClient.getPaymentsByClient(
-                AuthenticatedUserContext.require(authenticatedUser).userId(), dateFrom, dateTo);
+                clientId(authenticatedUser), dateFrom, dateTo);
+    }
+
+    private Long clientId(SessionUserDto authenticatedUser) {
+        SessionUserDto user = AuthenticatedUserContext.require(authenticatedUser);
+        return userService.getClientByEmail(GetClientByEmailRequest.newBuilder()
+                .setEmail(user.email()).build()).getIdClient();
     }
 }

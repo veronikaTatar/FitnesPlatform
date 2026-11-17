@@ -7,6 +7,8 @@ service UserService {
   rpc GetUser(GetUserRequest) returns (UserResponse);
   rpc GetClient(GetClientRequest) returns (ClientResponse);
   rpc GetClientByUser(GetClientByUserRequest) returns (ClientResponse);
+  rpc GetClientByEmail(GetClientByEmailRequest) returns (ClientResponse);
+  rpc EnsureUserProfile(EnsureUserProfileRequest) returns (UserResponse);
   rpc GetTrainer(GetTrainerRequest) returns (TrainerResponse);
   rpc GetTrainerByUser(GetTrainerByUserRequest) returns (TrainerResponse);
   rpc CheckUserExists(CheckUserExistsRequest) returns (CheckUserExistsResponse);
@@ -24,6 +26,16 @@ enum UserRole {
 message GetUserRequest { int64 id_user = 1; }
 message GetClientRequest { int64 id_client = 1; }
 message GetClientByUserRequest { int64 id_user = 1; }
+message GetClientByEmailRequest { string email = 1; }
+message EnsureUserProfileRequest {
+  string name = 1;
+  string email = 2;
+  string phone = 3;
+  string role = 4;
+  string birth_date = 5;
+  string fitness_level = 6;
+  string specialization = 7;
+}
 message GetTrainerRequest { int64 id_trainer = 1; }
 message GetTrainerByUserRequest { int64 id_user = 1; }
 message CheckUserExistsRequest { string email = 1; }

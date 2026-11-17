@@ -1,5 +1,7 @@
 package spiring.exapmle.apigateway.graphql.mutation;
 
+import com.fitness.user.grpc.EnsureUserProfileRequest;
+import com.fitness.user.grpc.UserServiceGrpc;
 import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
@@ -14,15 +16,36 @@ public class UserMutationResolver {
 
     private final UserServiceClient userServiceClient;
     private final AuthServiceClient authServiceClient;
+    private final UserServiceGrpc.UserServiceBlockingStub userService;
 
     @MutationMapping
     public AuthPayloadDto register(@Argument RegisterInputDto input) {
-        return authServiceClient.register(input);
+        AuthPayloadDto payload = authServiceClient.register(input);
+        ensureUserProfile(payload, input.getBirthDate(), input.getFitnessLevel(),
+                input.getSpecialization());
+        return payload;
     }
 
     @MutationMapping
     public AuthPayloadDto login(@Argument LoginInputDto input) {
-        return authServiceClient.login(input);
+        AuthPayloadDto payload = authServiceClient.login(input);
+        ensureUserProfile(payload, null, null, null);
+        return payload;
+    }
+
+    private void ensureUserProfile(AuthPayloadDto payload, String birthDate,
+                                   String fitnessLevel, String specialization) {
+        UserDto user = payload.getUser();
+        userService.ensureUserProfile(EnsureUserProfileRequest.newBuilder()
+                .setName(user.getName() == null ? "" : user.getName())
+                .setEmail(user.getEmail() == null ? "" : user.getEmail())
+                .setPhone(user.getPhone() == null ? "" : user.getPhone())
+                .setRole(user.getRole() == null || user.getRole().getName() == null
+                        ? "" : user.getRole().getName())
+                .setBirthDate(birthDate == null ? "" : birthDate)
+                .setFitnessLevel(fitnessLevel == null ? "" : fitnessLevel)
+                .setSpecialization(specialization == null ? "" : specialization)
+                .build());
     }
 
     @MutationMapping

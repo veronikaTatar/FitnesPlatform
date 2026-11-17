@@ -44,6 +44,19 @@ public class UserGrpcController extends UserServiceGrpc.UserServiceImplBase {
 
     @Override
     @Transactional(readOnly = true)
+    public void getClientByEmail(GetClientByEmailRequest request, StreamObserver<ClientResponse> observer) {
+        respond(observer, () -> toClient(userService.getClientByEmail(request.getEmail())));
+    }
+
+    @Override
+    public void ensureUserProfile(EnsureUserProfileRequest request, StreamObserver<UserResponse> observer) {
+        respond(observer, () -> toUser(userService.ensureUserProfile(
+                request.getName(), request.getEmail(), request.getPhone(), request.getRole(),
+                request.getBirthDate(), request.getFitnessLevel(), request.getSpecialization())));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public void getTrainer(GetTrainerRequest request, StreamObserver<TrainerResponse> observer) {
         respond(observer, () -> toTrainer(userService.getTrainerProfile(request.getIdTrainer())));
     }

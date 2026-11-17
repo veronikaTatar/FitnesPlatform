@@ -5,5 +5,6 @@ import spiring.exapmle.userservice.models.Client;
 import java.util.Optional;
 
 public interface ClientRepository extends JpaRepository<Client, Long> {
+    Optional<Client> findByUser_EmailIgnoreCase(String email);
     Optional<Client> findByUser_IdUser(Long idUser);
 }

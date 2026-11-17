@@ -1,5 +1,7 @@
 package spiring.exapmle.apigateway.graphql.mutation;
 
+import com.fitness.user.grpc.GetClientByEmailRequest;
+import com.fitness.user.grpc.UserServiceGrpc;
 import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.ContextValue;
@@ -15,21 +17,20 @@ import spiring.exapmle.apigateway.dto.*;
 public class BookingMutationResolver {
 
     private final BookingServiceClient bookingServiceClient;
+    private final UserServiceGrpc.UserServiceBlockingStub userService;
 
     @MutationMapping
     public BookingDto bookWorkout(@Argument Long workoutId,
                                   @ContextValue(GraphQlAuthenticationInterceptor.AUTHENTICATED_USER_CONTEXT_KEY)
                                   SessionUserDto authenticatedUser) {
-        return bookingServiceClient.bookWorkout(
-                AuthenticatedUserContext.require(authenticatedUser).userId(), workoutId);
+        return bookingServiceClient.bookWorkout(clientId(authenticatedUser), workoutId);
     }
 
     @MutationMapping
     public BookingDto cancelBooking(@Argument Long bookingId,
                                     @ContextValue(GraphQlAuthenticationInterceptor.AUTHENTICATED_USER_CONTEXT_KEY)
                                     SessionUserDto authenticatedUser) {
-        return bookingServiceClient.cancelBooking(
-                AuthenticatedUserContext.require(authenticatedUser).userId(), bookingId);
+        return bookingServiceClient.cancelBooking(clientId(authenticatedUser), bookingId);
     }
 
     @MutationMapping
@@ -37,8 +38,7 @@ public class BookingMutationResolver {
             @Argument CreateSubscriptionInputDto input,
             @ContextValue(GraphQlAuthenticationInterceptor.AUTHENTICATED_USER_CONTEXT_KEY)
             SessionUserDto authenticatedUser) {
-        return bookingServiceClient.createSubscription(
-                AuthenticatedUserContext.require(authenticatedUser).userId(), input);
+        return bookingServiceClient.createSubscription(clientId(authenticatedUser), input);
     }
 
     @MutationMapping
@@ -53,7 +53,12 @@ public class BookingMutationResolver {
             @Argument RegisterPaymentInputDto input,
             @ContextValue(GraphQlAuthenticationInterceptor.AUTHENTICATED_USER_CONTEXT_KEY)
             SessionUserDto authenticatedUser) {
-        return bookingServiceClient.registerPayment(
-                AuthenticatedUserContext.require(authenticatedUser).userId(), input);
+        return bookingServiceClient.registerPayment(clientId(authenticatedUser), input);
+    }
+
+    private Long clientId(SessionUserDto authenticatedUser) {
+        SessionUserDto user = AuthenticatedUserContext.require(authenticatedUser);
+        return userService.getClientByEmail(GetClientByEmailRequest.newBuilder()
+                .setEmail(user.email()).build()).getIdClient();
     }
 }

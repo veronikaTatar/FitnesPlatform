@@ -16,6 +16,9 @@ public interface UserService {
 
     Client getClientProfile(Long idClient);
     Client getClientByUser(Long idUser);
+    Client getClientByEmail(String email);
+    User ensureUserProfile(String name, String email, String phone, String role,
+                           String birthDate, String fitnessLevel, String specialization);
     Trainer getTrainerProfile(Long idTrainer);
     Trainer getTrainerByUser(Long idUser);
     List<Trainer> getTrainersBySpecialization(String specialization);
