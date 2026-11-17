@@ -4,8 +4,10 @@ import com.fitness.workout.grpc.CheckAvailabilityRequest;
 import com.fitness.workout.grpc.ReleaseSlotRequest;
 import com.fitness.workout.grpc.ReserveSlotRequest;
 import com.fitness.workout.grpc.WorkoutServiceGrpc;
+import by.bsuir.fitness.events.BookingCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import net.devh.boot.grpc.client.inject.GrpcClient;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import io.grpc.Status;
@@ -20,7 +22,9 @@ import spiring.exapmle.bookingservice.repositories.PaymentRepository;
 import spiring.exapmle.bookingservice.repositories.SubscriptionRepository;
 
 import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +33,7 @@ public class BookingServiceImpl implements BookingService {
     private final BookingRepository bookingRepository;
     private final SubscriptionRepository subscriptionRepository;
     private final PaymentRepository paymentRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @GrpcClient("workoutService")
     private WorkoutServiceGrpc.WorkoutServiceBlockingStub workoutService;
@@ -111,7 +116,11 @@ public class BookingServiceImpl implements BookingService {
             booking.setIdWorkout(idWorkout);
             booking.setStatus(BookingStatus.ACTIVE);
             booking.setBookingDate(LocalDateTime.now());
-            return bookingRepository.save(booking);
+            Booking saved = bookingRepository.save(booking);
+            eventPublisher.publishEvent(new BookingCreatedEvent(
+                    UUID.randomUUID().toString(), saved.getIdBooking(), idClient,
+                    idWorkout, Instant.now()));
+            return saved;
         } catch (RuntimeException exception) {
             if (reserved) {
                 try {
