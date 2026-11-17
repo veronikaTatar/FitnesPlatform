@@ -8,6 +8,8 @@ resilience:
     deadline-ms: ${GRPC_DEADLINE_MS:2500}
 
 spring:
+  cache:
+    type: redis
   application:
     name: api-gateway
   graphql:
