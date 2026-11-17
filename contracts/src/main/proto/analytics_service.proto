@@ -7,6 +7,7 @@ service AnalyticsService {
   rpc GetAttendanceStats(StatsPeriodRequest) returns (AttendanceStatsResponse);
   rpc GetRevenueStats(StatsPeriodRequest) returns (RevenueStatsResponse);
   rpc GetProgramPopularity(PopularityRequest) returns (PopularityResponse);
+  rpc GetAggregatedStats(StatsPeriodRequest) returns (AggregatedStatsResponse);
 }
 
 message StatsPeriodRequest { string date_from = 1; string date_to = 2; }
@@ -30,7 +31,18 @@ message RevenueStatItem {
 
 message PopularityResponse { repeated PopularityItem items = 1; }
 message PopularityItem {
-  int32 id_training_program = 1;
+  int64 id_training_program = 1;
   string program_name = 2;
   int32 booking_count = 3;
+  string period = 4;
+}
+
+message AggregatedStatsResponse {
+  int32 total_bookings = 1;
+  int32 total_attendance = 2;
+  double total_revenue = 3;
+  double subscription_revenue = 4;
+  int32 payment_count = 5;
+  double average_attendance = 6;
+  repeated PopularityItem top_programs = 7;
 }

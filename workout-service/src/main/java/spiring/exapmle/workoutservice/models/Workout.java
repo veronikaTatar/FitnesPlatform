@@ -33,4 +33,7 @@ public class Workout {
 
     @Column(name = "max_capacity", nullable = false)
     private Integer maxCapacity;
+
+    @Column(name = "booked_count", nullable = false)
+    private Integer bookedCount = 0;
 }

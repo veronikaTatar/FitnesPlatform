@@ -9,6 +9,7 @@ import java.util.List;
 public interface UserService {
     User getById(Long id);
     User getByEmail(String email);
+    boolean existsByEmail(String email);
     List<User> getAll();
     List<User> getByRole(String roleName);
     List<User> search(String query);

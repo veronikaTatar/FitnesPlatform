@@ -2,6 +2,7 @@ package spiring.exapmle.workoutservice.services;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import spiring.exapmle.workoutservice.models.Progress;
 import spiring.exapmle.workoutservice.models.TrainingProgram;
 import spiring.exapmle.workoutservice.models.Workout;
@@ -12,6 +13,7 @@ import spiring.exapmle.workoutservice.repositories.WorkoutRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,12 +31,12 @@ public class WorkoutServiceImpl implements WorkoutService {
 
     @Override
     public List<TrainingProgram> getPrograms(String type, String difficultyLevel, Long idTrainer) {
-        if (idTrainer != null) return programRepository.findByIdTrainer(idTrainer);
-        if (type != null && difficultyLevel != null)
-            return programRepository.findByTypeAndDifficultyLevel(type, difficultyLevel);
-        if (type != null) return programRepository.findByType(type);
-        if (difficultyLevel != null) return programRepository.findByDifficultyLevel(difficultyLevel);
-        return programRepository.findAll();
+        return programRepository.findAll().stream()
+                .filter(p -> type == null || type.equals(p.getType()))
+                .filter(p -> difficultyLevel == null
+                        || difficultyLevel.equals(p.getDifficultyLevel()))
+                .filter(p -> idTrainer == null || idTrainer.equals(p.getIdTrainer()))
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -45,19 +47,31 @@ public class WorkoutServiceImpl implements WorkoutService {
 
     @Override
     public List<Workout> getWorkouts(Long idTrainer, Long idProgram, LocalDateTime from, LocalDateTime to, String status) {
-        if (idTrainer != null && from != null && to != null)
-            return workoutRepository.findByIdTrainerAndStartDatetimeBetween(idTrainer, from, to);
-        if (idTrainer != null) return workoutRepository.findByIdTrainer(idTrainer);
-        if (idProgram != null) return workoutRepository.findByTrainingProgram_IdTrainingProgram(idProgram);
-        if (from != null && to != null)
-            return workoutRepository.findByStartDatetimeBetween(from, to);
-        if (status != null) return workoutRepository.findByStatus(status);
-        return workoutRepository.findAll();
+        return workoutRepository.findAll().stream()
+                .filter(w -> idTrainer == null || idTrainer.equals(w.getIdTrainer()))
+                .filter(w -> idProgram == null || idProgram.equals(
+                        w.getTrainingProgram().getIdTrainingProgram()))
+                .filter(w -> from == null || !w.getStartDatetime().isBefore(from))
+                .filter(w -> to == null || !w.getStartDatetime().isAfter(to))
+                .filter(w -> status == null || status.equals(w.getStatus()))
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<Workout> getWorkoutsByTrainer(Long idTrainer) {
         return workoutRepository.findByIdTrainer(idTrainer);
+    }
+
+    @Override
+    @Transactional
+    public boolean reserveSlot(Long idWorkout) {
+        return workoutRepository.reserveAvailableSlot(idWorkout) == 1;
+    }
+
+    @Override
+    @Transactional
+    public boolean releaseSlot(Long idWorkout) {
+        return workoutRepository.releaseReservedSlot(idWorkout) == 1;
     }
 
     @Override

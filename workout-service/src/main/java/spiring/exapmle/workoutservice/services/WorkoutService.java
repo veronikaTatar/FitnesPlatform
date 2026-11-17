@@ -15,6 +15,9 @@ public interface WorkoutService {
     List<Workout> getWorkouts(Long idTrainer, Long idProgram, LocalDateTime from, LocalDateTime to, String status);
     List<Workout> getWorkoutsByTrainer(Long idTrainer);
 
+    boolean reserveSlot(Long idWorkout);
+    boolean releaseSlot(Long idWorkout);
+
     Progress getProgressById(Long id);
     List<Progress> getProgressByClient(Long idClient);
     List<Progress> getProgressByClientAndPeriod(Long idClient, LocalDate from, LocalDate to);

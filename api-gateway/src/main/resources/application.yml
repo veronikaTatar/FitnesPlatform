@@ -30,3 +30,18 @@ logging:
 services:
   auth:
     url: ${AUTH_SERVICE_URL:http://localhost:8085}
+
+grpc:
+  client:
+    userService:
+      address: ${GRPC_USER_ADDRESS:static://localhost:9091}
+      negotiation-type: plaintext
+    workoutService:
+      address: ${GRPC_WORKOUT_ADDRESS:static://localhost:9192}
+      negotiation-type: plaintext
+    bookingService:
+      address: ${GRPC_BOOKING_ADDRESS:static://localhost:9093}
+      negotiation-type: plaintext
+    analyticsService:
+      address: ${GRPC_ANALYTICS_ADDRESS:static://localhost:9094}
+      negotiation-type: plaintext

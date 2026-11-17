@@ -1,6 +1,5 @@
 package spiring.exapmle.apigateway.client.mock;
 
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import spiring.exapmle.apigateway.client.BookingServiceClient;
 import spiring.exapmle.apigateway.dto.*;
@@ -15,7 +14,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
 
 @Service
-@Primary
 public class MockBookingServiceClient implements BookingServiceClient {
 
     private final List<BookingDto> bookings = new ArrayList<>();

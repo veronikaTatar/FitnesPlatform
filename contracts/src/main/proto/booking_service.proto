@@ -5,9 +5,15 @@ option java_multiple_files = true;
 
 service BookingService {
   rpc GetBooking(GetBookingRequest) returns (BookingResponse);
+  rpc GetBookings(ListBookingsRequest) returns (BookingListResponse);
   rpc GetClientBookings(GetClientBookingsRequest) returns (BookingListResponse);
+  rpc GetSubscription(GetSubscriptionRequest) returns (SubscriptionResponse);
+  rpc GetClientSubscriptions(GetClientSubscriptionsRequest) returns (SubscriptionListResponse);
   rpc GetActiveSubscription(GetActiveSubscriptionRequest) returns (SubscriptionResponse);
   rpc GetPayment(GetPaymentRequest) returns (PaymentResponse);
+  rpc GetClientPayments(GetClientPaymentsRequest) returns (PaymentListResponse);
+  rpc BookWorkout(BookWorkoutRequest) returns (BookingResponse);
+  rpc CancelBooking(CancelBookingRequest) returns (BookingResponse);
 }
 
 enum BookingStatus {
@@ -23,15 +29,30 @@ enum PaymentStatus {
   FAILED = 3;
 }
 
-message GetBookingRequest { int32 id_booking = 1; }
-message GetClientBookingsRequest { int32 id_client = 1; string status = 2; }
-message GetActiveSubscriptionRequest { int32 id_client = 1; }
-message GetPaymentRequest { int32 id_payment = 1; }
+message GetBookingRequest { int64 id_booking = 1; }
+message ListBookingsRequest { int64 id_client = 1; int64 id_workout = 2; }
+message GetClientBookingsRequest {
+  int64 id_client = 1;
+  string status = 2;
+  string sort_by = 3;
+  string sort_order = 4;
+}
+message GetSubscriptionRequest { int64 id_subscription = 1; }
+message GetClientSubscriptionsRequest { int64 id_client = 1; }
+message GetActiveSubscriptionRequest { int64 id_client = 1; }
+message GetPaymentRequest { int64 id_payment = 1; }
+message GetClientPaymentsRequest {
+  int64 id_client = 1;
+  string date_from = 2;
+  string date_to = 3;
+}
+message BookWorkoutRequest { int64 id_client = 1; int64 id_workout = 2; }
+message CancelBookingRequest { int64 id_client = 1; int64 id_booking = 2; }
 
 message BookingResponse {
-  int32 id_booking = 1;
-  int32 id_client = 2;
-  int32 id_workout = 3;
+  int64 id_booking = 1;
+  int64 id_client = 2;
+  int64 id_workout = 3;
   BookingStatus status = 4;
   string booking_date = 5;
 }
@@ -39,17 +60,22 @@ message BookingResponse {
 message BookingListResponse { repeated BookingResponse bookings = 1; }
 
 message SubscriptionResponse {
-  int32 id_subscription = 1;
-  int32 id_client = 2;
+  int64 id_subscription = 1;
+  int64 id_client = 2;
   string status = 3;
   int32 remaining_sessions = 4;
   string end_date = 5;
+  int32 subscription_type_id = 6;
+  string start_date = 7;
 }
 
 message PaymentResponse {
-  int32 id_payment = 1;
-  int32 id_client = 2;
+  int64 id_payment = 1;
+  int64 id_client = 2;
   double amount = 3;
   PaymentStatus status = 4;
   string payment_date = 5;
 }
+
+message SubscriptionListResponse { repeated SubscriptionResponse subscriptions = 1; }
+message PaymentListResponse { repeated PaymentResponse payments = 1; }

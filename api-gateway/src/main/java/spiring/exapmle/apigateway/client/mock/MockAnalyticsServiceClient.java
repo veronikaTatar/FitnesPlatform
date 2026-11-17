@@ -1,6 +1,5 @@
 package spiring.exapmle.apigateway.client.mock;
 
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import spiring.exapmle.apigateway.client.AnalyticsServiceClient;
 import spiring.exapmle.apigateway.dto.AggregatedStatsDto;
@@ -14,7 +13,6 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@Primary
 public class MockAnalyticsServiceClient implements AnalyticsServiceClient {
 
     private final List<AttendanceStatsDto> attendanceStats = new ArrayList<>();

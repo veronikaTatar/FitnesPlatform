@@ -6,8 +6,11 @@ option java_multiple_files = true;
 service UserService {
   rpc GetUser(GetUserRequest) returns (UserResponse);
   rpc GetClient(GetClientRequest) returns (ClientResponse);
+  rpc GetClientByUser(GetClientByUserRequest) returns (ClientResponse);
   rpc GetTrainer(GetTrainerRequest) returns (TrainerResponse);
+  rpc GetTrainerByUser(GetTrainerByUserRequest) returns (TrainerResponse);
   rpc CheckUserExists(CheckUserExistsRequest) returns (CheckUserExistsResponse);
+  rpc GetUsers(GetUsersRequest) returns (GetUsersResponse);
   rpc GetUsersByIds(GetUsersByIdsRequest) returns (GetUsersByIdsResponse);
 }
 
@@ -18,14 +21,18 @@ enum UserRole {
   ADMIN = 3;
 }
 
-message GetUserRequest { int32 id_user = 1; }
-message GetClientRequest { int32 id_client = 1; }
-message GetTrainerRequest { int32 id_trainer = 1; }
+message GetUserRequest { int64 id_user = 1; }
+message GetClientRequest { int64 id_client = 1; }
+message GetClientByUserRequest { int64 id_user = 1; }
+message GetTrainerRequest { int64 id_trainer = 1; }
+message GetTrainerByUserRequest { int64 id_user = 1; }
 message CheckUserExistsRequest { string email = 1; }
-message GetUsersByIdsRequest { repeated int32 ids = 1; }
+message GetUsersRequest { string role = 1; string search = 2; }
+message GetUsersResponse { repeated UserResponse users = 1; }
+message GetUsersByIdsRequest { repeated int64 ids = 1; }
 
 message UserResponse {
-  int32 id_user = 1;
+  int64 id_user = 1;
   string name = 2;
   string email = 3;
   string phone = 4;
@@ -33,16 +40,16 @@ message UserResponse {
 }
 
 message ClientResponse {
-  int32 id_client = 1;
-  int32 id_user = 2;
+  int64 id_client = 1;
+  int64 id_user = 2;
   string name = 3;
   string birth_date = 4;
   string fitness_level = 5;
 }
 
 message TrainerResponse {
-  int32 id_trainer = 1;
-  int32 id_user = 2;
+  int64 id_trainer = 1;
+  int64 id_user = 2;
   string name = 3;
   string specialization = 4;
   double rating = 5;

@@ -1,6 +1,5 @@
 package spiring.exapmle.apigateway.client.mock;
 
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import spiring.exapmle.apigateway.client.WorkoutServiceClient;
 import spiring.exapmle.apigateway.dto.*;
@@ -15,7 +14,6 @@ import java.util.stream.Collectors;
 
 
 @Service
-@Primary
 public class MockWorkoutServiceClient implements WorkoutServiceClient {
 
     private final List<TrainingProgramDto> programs = new ArrayList<>();

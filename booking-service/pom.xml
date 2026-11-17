@@ -22,6 +22,10 @@
             <groupId>by.bsuir.fitness</groupId>
             <artifactId>contracts</artifactId>
         </dependency>
+        <dependency>
+            <groupId>net.devh</groupId>
+            <artifactId>grpc-spring-boot-starter</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -22,3 +22,11 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+
+grpc:
+  server:
+    port: 9093
+  client:
+    workoutService:
+      address: static://localhost:9192
+      negotiation-type: plaintext

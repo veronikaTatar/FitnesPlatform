@@ -1,6 +1,5 @@
 package spiring.exapmle.apigateway.client.mock;
 
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import spiring.exapmle.apigateway.client.UserServiceClient;
 import spiring.exapmle.apigateway.dto.*;
@@ -12,7 +11,6 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
-@Primary
 public class MockUserServiceClient implements UserServiceClient {
 
     private final Map<Long, UserDto> storage = new HashMap<>();
