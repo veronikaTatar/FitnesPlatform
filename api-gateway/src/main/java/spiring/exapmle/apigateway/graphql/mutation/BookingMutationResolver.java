@@ -50,7 +50,10 @@ public class BookingMutationResolver {
 
     @MutationMapping
     public PaymentDto registerPayment(
-            @Argument RegisterPaymentInputDto input) {
-        return bookingServiceClient.registerPayment(input);
+            @Argument RegisterPaymentInputDto input,
+            @ContextValue(GraphQlAuthenticationInterceptor.AUTHENTICATED_USER_CONTEXT_KEY)
+            SessionUserDto authenticatedUser) {
+        return bookingServiceClient.registerPayment(
+                AuthenticatedUserContext.require(authenticatedUser).userId(), input);
     }
 }

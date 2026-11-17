@@ -18,7 +18,7 @@ public interface BookingServiceClient {
     BookingDto cancelBooking(Long clientId, Long bookingId);
     SubscriptionDto createSubscription(Long clientId, CreateSubscriptionInputDto input);
     SubscriptionDto changeSubscriptionStatus(Long id, String status);
-    PaymentDto registerPayment(RegisterPaymentInputDto input);
+    PaymentDto registerPayment(Long clientId, RegisterPaymentInputDto input);
 
     // ЛР4 Query с поддержкой фильтрации и сортировки данных
     List<BookingDto> getBookingsByClient(

@@ -1,8 +1,8 @@
 package spiring.exapmle.apigateway.client;
 import com.fitness.analytics.grpc.*; import org.springframework.context.annotation.Primary; import org.springframework.stereotype.Service; import spiring.exapmle.apigateway.dto.*; import java.util.List;
 @Service @Primary public class GrpcAnalyticsServiceClient implements AnalyticsServiceClient {
- private final AnalyticsServiceGrpc.AnalyticsServiceBlockingStub grpc; private final AnalyticsServiceClient fallback;
- public GrpcAnalyticsServiceClient(AnalyticsServiceGrpc.AnalyticsServiceBlockingStub grpc,@org.springframework.beans.factory.annotation.Qualifier("mockAnalyticsServiceClient") AnalyticsServiceClient fallback){this.grpc=grpc;this.fallback=fallback;}
+ private final AnalyticsServiceGrpc.AnalyticsServiceBlockingStub grpc;
+ public GrpcAnalyticsServiceClient(AnalyticsServiceGrpc.AnalyticsServiceBlockingStub grpc){this.grpc=grpc;}
  public List<AttendanceStatsDto> getAttendanceStats(String f,String t){return grpc.getAttendanceStats(period(f,t)).getItemsList().stream().map(x->{AttendanceStatsDto d=new AttendanceStatsDto();d.setDate(x.getDate());d.setWorkoutCount(x.getWorkoutCount());d.setBookingCount(x.getBookingCount());d.setAttendanceCount(x.getAttendanceCount());return d;}).toList();}
  public List<RevenueStatsDto> getRevenueStats(String f,String t){return grpc.getRevenueStats(period(f,t)).getItemsList().stream().map(x->{RevenueStatsDto d=new RevenueStatsDto();d.setDate(x.getDate());d.setTotalRevenue((float)x.getTotalRevenue());d.setSubscriptionRevenue((float)x.getSubscriptionRevenue());d.setPaymentCount(x.getPaymentCount());return d;}).toList();}
  public List<ProgramPopularityDto> getProgramPopularity(String p){return grpc.getProgramPopularity(PopularityRequest.newBuilder().setPeriod(p==null?"":p).build()).getItemsList().stream().map(GrpcAnalyticsServiceClient::pop).toList();}

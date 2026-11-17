@@ -15,7 +15,7 @@ public interface WorkoutServiceClient {
     List<ProgressDto> getProgressByClient(Long clientId);
     List<ProgressDto> getProgressByClientAndPeriod(Long clientId, String dateFrom, String dateTo);
     // ЛР4 Mutation-методы
-    TrainingProgramDto createTrainingProgram(CreateTrainingProgramInputDto input);
+    TrainingProgramDto createTrainingProgram(Long trainerUserId, CreateTrainingProgramInputDto input);
     TrainingProgramDto updateTrainingProgram(Long id, UpdateTrainingProgramInputDto input);
     Boolean archiveTrainingProgram(Long id);
     WorkoutDto createWorkout(CreateWorkoutInputDto input);

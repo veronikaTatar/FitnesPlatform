@@ -2,9 +2,12 @@ package spiring.exapmle.apigateway.graphql.mutation;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.graphql.data.method.annotation.Argument;
+import org.springframework.graphql.data.method.annotation.ContextValue;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.stereotype.Controller;
 import spiring.exapmle.apigateway.client.WorkoutServiceClient;
+import spiring.exapmle.apigateway.config.AuthenticatedUserContext;
+import spiring.exapmle.apigateway.config.GraphQlAuthenticationInterceptor;
 import spiring.exapmle.apigateway.dto.*;
 
 @Controller
@@ -15,8 +18,11 @@ public class WorkoutMutationResolver {
 
     @MutationMapping
     public TrainingProgramDto createTrainingProgram(
-            @Argument CreateTrainingProgramInputDto input) {
-        return workoutServiceClient.createTrainingProgram(input);
+            @Argument CreateTrainingProgramInputDto input,
+            @ContextValue(GraphQlAuthenticationInterceptor.AUTHENTICATED_USER_CONTEXT_KEY)
+            SessionUserDto authenticatedUser) {
+        return workoutServiceClient.createTrainingProgram(
+                AuthenticatedUserContext.require(authenticatedUser).userId(), input);
     }
 
     @MutationMapping
