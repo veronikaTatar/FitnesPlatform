@@ -3,6 +3,10 @@ server:
   error:
     include-message: always
 
+resilience:
+  grpc:
+    deadline-ms: ${GRPC_DEADLINE_MS:2500}
+
 spring:
   application:
     name: api-gateway

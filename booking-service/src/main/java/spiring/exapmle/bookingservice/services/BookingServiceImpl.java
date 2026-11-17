@@ -7,9 +7,13 @@ import com.fitness.workout.grpc.WorkoutServiceGrpc;
 import by.bsuir.fitness.events.BookingCreatedEvent;
 import lombok.RequiredArgsConstructor;
 import net.devh.boot.grpc.client.inject.GrpcClient;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import spiring.exapmle.bookingservice.models.Booking;
@@ -28,10 +32,15 @@ import spiring.exapmle.bookingservice.models.enums.PaymentStatus;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 @Service
 @RequiredArgsConstructor
 public class BookingServiceImpl implements BookingService {
+    private static final Logger log = LoggerFactory.getLogger(BookingServiceImpl.class);
+    private static final long WORKOUT_RPC_TIMEOUT_MS = 2500;
+    private static final int AVAILABILITY_MAX_ATTEMPTS = 3;
 
     private final BookingRepository bookingRepository;
     private final SubscriptionRepository subscriptionRepository;
@@ -86,8 +95,7 @@ public class BookingServiceImpl implements BookingService {
         }
 
         try {
-            var availability = workoutService.checkAvailability(
-                    CheckAvailabilityRequest.newBuilder().setIdWorkout(idWorkout).build());
+            var availability = checkAvailabilityWithRetry(idWorkout);
             if (!availability.getAvailable()) {
                 throw Status.FAILED_PRECONDITION
                         .withDescription("Workout is full or is not planned")
@@ -100,41 +108,29 @@ public class BookingServiceImpl implements BookingService {
                     .withCause(exception).asRuntimeException();
         }
 
-        boolean reserved = false;
-        try {
-            var reservation = workoutService.reserveSlot(
-                    ReserveSlotRequest.newBuilder().setIdWorkout(idWorkout).build());
-            reserved = reservation.getSuccess();
-            if (!reserved) {
-                throw Status.FAILED_PRECONDITION
-                        .withDescription("No free slots for workout: " + idWorkout)
-                        .asRuntimeException();
-            }
-
-            subscription.setRemainingSessions(subscription.getRemainingSessions() - 1);
-            subscriptionRepository.save(subscription);
-
-            Booking booking = new Booking();
-            booking.setIdClient(idClient);
-            booking.setIdWorkout(idWorkout);
-            booking.setStatus(BookingStatus.ACTIVE);
-            booking.setBookingDate(LocalDateTime.now());
-            Booking saved = bookingRepository.save(booking);
-            eventPublisher.publishEvent(new BookingCreatedEvent(
-                    UUID.randomUUID().toString(), saved.getIdBooking(), idClient,
-                    idWorkout, Instant.now()));
-            return saved;
-        } catch (RuntimeException exception) {
-            if (reserved) {
-                try {
-                    workoutService.releaseSlot(ReleaseSlotRequest.newBuilder()
-                            .setIdWorkout(idWorkout).build());
-                } catch (RuntimeException compensationFailure) {
-                    exception.addSuppressed(compensationFailure);
-                }
-            }
-            throw exception;
+        var reservation = callWorkout(() -> workoutService
+                .withDeadlineAfter(WORKOUT_RPC_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                .reserveSlot(ReserveSlotRequest.newBuilder().setIdWorkout(idWorkout).build()));
+        if (!reservation.getSuccess()) {
+            throw Status.FAILED_PRECONDITION
+                    .withDescription("No free slots for workout: " + idWorkout)
+                    .asRuntimeException();
         }
+        registerReservationCompensation(idWorkout);
+
+        subscription.setRemainingSessions(subscription.getRemainingSessions() - 1);
+        subscriptionRepository.save(subscription);
+
+        Booking booking = new Booking();
+        booking.setIdClient(idClient);
+        booking.setIdWorkout(idWorkout);
+        booking.setStatus(BookingStatus.ACTIVE);
+        booking.setBookingDate(LocalDateTime.now());
+        Booking saved = bookingRepository.save(booking);
+        eventPublisher.publishEvent(new BookingCreatedEvent(
+                UUID.randomUUID().toString(), saved.getIdBooking(), idClient,
+                idWorkout, Instant.now()));
+        return saved;
     }
 
     @Override
@@ -157,8 +153,12 @@ public class BookingServiceImpl implements BookingService {
                         idClient, SubscriptionStatus.ACTIVE).orElse(null);
         boolean released;
         try {
-            released = workoutService.releaseSlot(ReleaseSlotRequest.newBuilder()
-                    .setIdWorkout(booking.getIdWorkout()).build()).getSuccess();
+            released = callWorkout(() -> workoutService
+                    .withDeadlineAfter(WORKOUT_RPC_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                    .releaseSlot(ReleaseSlotRequest.newBuilder()
+                            .setIdWorkout(booking.getIdWorkout()).build())).getSuccess();
+        } catch (StatusRuntimeException exception) {
+            throw exception;
         } catch (RuntimeException exception) {
             throw Status.UNAVAILABLE.withDescription("Workout Service is unavailable")
                     .withCause(exception).asRuntimeException();
@@ -179,13 +179,84 @@ public class BookingServiceImpl implements BookingService {
             return bookingRepository.save(booking);
         } catch (RuntimeException exception) {
             try {
-                workoutService.reserveSlot(ReserveSlotRequest.newBuilder()
-                        .setIdWorkout(booking.getIdWorkout()).build());
+                callWorkout(() -> workoutService
+                        .withDeadlineAfter(WORKOUT_RPC_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                        .reserveSlot(ReserveSlotRequest.newBuilder()
+                                .setIdWorkout(booking.getIdWorkout()).build()));
             } catch (RuntimeException compensationFailure) {
                 exception.addSuppressed(compensationFailure);
             }
             throw exception;
         }
+    }
+
+    private com.fitness.workout.grpc.CheckAvailabilityResponse checkAvailabilityWithRetry(Long idWorkout) {
+        StatusRuntimeException lastFailure = null;
+        for (int attempt = 1; attempt <= AVAILABILITY_MAX_ATTEMPTS; attempt++) {
+            try {
+                return callWorkout(() -> workoutService
+                        .withDeadlineAfter(WORKOUT_RPC_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                        .checkAvailability(CheckAvailabilityRequest.newBuilder()
+                                .setIdWorkout(idWorkout).build()));
+            } catch (StatusRuntimeException exception) {
+                Status.Code code = exception.getStatus().getCode();
+                boolean transientFailure = code == Status.Code.UNAVAILABLE
+                        || code == Status.Code.DEADLINE_EXCEEDED;
+                if (!transientFailure || attempt == AVAILABILITY_MAX_ATTEMPTS) {
+                    throw exception;
+                }
+                lastFailure = exception;
+                pauseBeforeRetry(attempt, exception);
+            }
+        }
+        throw lastFailure;
+    }
+
+    private <T> T callWorkout(Supplier<T> call) {
+        try {
+            return call.get();
+        } catch (StatusRuntimeException exception) {
+            throw exception;
+        } catch (RuntimeException exception) {
+            throw Status.UNAVAILABLE.withDescription("Workout Service is unavailable")
+                    .withCause(exception).asRuntimeException();
+        }
+    }
+
+    private void pauseBeforeRetry(int attempt, StatusRuntimeException previousFailure) {
+        long backoffMs = 100L * attempt;
+        try {
+            Thread.sleep(backoffMs);
+        } catch (InterruptedException interrupted) {
+            Thread.currentThread().interrupt();
+            throw Status.CANCELLED.withDescription("Interrupted while retrying Workout Service")
+                    .withCause(interrupted).asRuntimeException();
+        }
+        log.warn("Workout Service availability check failed; retrying attempt {}/{} after {} ms: {}",
+                attempt + 1, AVAILABILITY_MAX_ATTEMPTS, backoffMs,
+                previousFailure.getStatus().getCode());
+    }
+
+    private void registerReservationCompensation(Long idWorkout) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            throw new IllegalStateException("Booking transaction synchronization is not active");
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_COMMITTED) {
+                    try {
+                        callWorkout(() -> workoutService
+                                .withDeadlineAfter(WORKOUT_RPC_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+                                .releaseSlot(ReleaseSlotRequest.newBuilder()
+                                        .setIdWorkout(idWorkout).build()));
+                    } catch (RuntimeException compensationFailure) {
+                        log.error("Failed to release workout {} after booking transaction rollback",
+                                idWorkout, compensationFailure);
+                    }
+                }
+            }
+        });
     }
 
     @Override

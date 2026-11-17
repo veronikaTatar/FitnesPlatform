@@ -17,15 +17,22 @@ public class BookingCreatedKafkaPublisher {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void publishAfterCommit(BookingCreatedEvent event) {
-        kafkaTemplate.send(BookingKafkaConfiguration.BOOKING_CREATED_TOPIC,
-                        event.eventId(), event)
-                .whenComplete((result, error) -> {
-                    if (error != null) {
-                        log.error("Failed to publish booking event {}", event.eventId(), error);
-                    } else {
-                        log.info("Published booking event {} to partition {}",
-                                event.eventId(), result.getRecordMetadata().partition());
-                    }
-                });
+        try {
+            kafkaTemplate.send(BookingKafkaConfiguration.BOOKING_CREATED_TOPIC,
+                            event.eventId(), event)
+                    .whenComplete((result, error) -> {
+                        if (error != null) {
+                            log.error("Failed to publish booking event {} after producer retries exhausted",
+                                    event.eventId(), error);
+                        } else {
+                            log.info("Published booking event {} to partition {}",
+                                    event.eventId(), result.getRecordMetadata().partition());
+                        }
+                    });
+        } catch (RuntimeException exception) {
+            // The booking transaction has already committed. Do not report it as rolled back.
+            log.error("Could not start Kafka publication for committed booking event {}",
+                    event.eventId(), exception);
+        }
     }
 }
