@@ -19,17 +19,23 @@ public class BookingCreatedKafkaConsumer {
     @KafkaListener(topics = "fitness.booking.created", groupId = "analytics-service")
     @Transactional
     public void consume(BookingCreatedEvent event) {
-        if (repository.existsById(event.eventId())) {
-            log.info("Ignoring duplicate booking event {}", event.eventId());
-            return;
+        try {
+            if (repository.existsById(event.eventId())) {
+                log.info("Ignoring duplicate booking event {}", event.eventId());
+                return;
+            }
+            ProcessedBookingEvent processed = new ProcessedBookingEvent();
+            processed.setEventId(event.eventId());
+            processed.setBookingId(event.bookingId());
+            processed.setClientId(event.clientId());
+            processed.setWorkoutId(event.workoutId());
+            processed.setOccurredAt(event.occurredAt());
+            repository.save(processed);
+            log.info("Processed booking event {} for booking {}", event.eventId(), event.bookingId());
+        } catch (RuntimeException exception) {
+            log.error("Failed to process booking event {} for booking {}",
+                    event.eventId(), event.bookingId(), exception);
+            throw exception;
         }
-        ProcessedBookingEvent processed = new ProcessedBookingEvent();
-        processed.setEventId(event.eventId());
-        processed.setBookingId(event.bookingId());
-        processed.setClientId(event.clientId());
-        processed.setWorkoutId(event.workoutId());
-        processed.setOccurredAt(event.occurredAt());
-        repository.save(processed);
-        log.info("Processed booking event {} for booking {}", event.eventId(), event.bookingId());
     }
 }

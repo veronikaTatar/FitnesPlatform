@@ -87,6 +87,7 @@ public class BookingServiceImpl implements BookingService {
     @Override
     @Transactional
     public Booking bookWorkout(Long idClient, Long idWorkout) {
+        log.info("Booking scenario started: clientId={}, workoutId={}", idClient, idWorkout);
         Subscription subscription = getActiveSubscription(idClient);
         if (subscription.getRemainingSessions() <= 0) {
             throw Status.FAILED_PRECONDITION
@@ -108,7 +109,7 @@ public class BookingServiceImpl implements BookingService {
                     .withCause(exception).asRuntimeException();
         }
 
-        var reservation = callWorkout(() -> workoutService
+        var reservation = callWorkout("ReserveSlot", () -> workoutService
                 .withDeadlineAfter(WORKOUT_RPC_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                 .reserveSlot(ReserveSlotRequest.newBuilder().setIdWorkout(idWorkout).build()));
         if (!reservation.getSuccess()) {
@@ -130,12 +131,15 @@ public class BookingServiceImpl implements BookingService {
         eventPublisher.publishEvent(new BookingCreatedEvent(
                 UUID.randomUUID().toString(), saved.getIdBooking(), idClient,
                 idWorkout, Instant.now()));
+        log.info("Booking scenario completed: bookingId={}, clientId={}, workoutId={}",
+                saved.getIdBooking(), idClient, idWorkout);
         return saved;
     }
 
     @Override
     @Transactional
     public Booking cancelBooking(Long idClient, Long idBooking) {
+        log.info("Booking cancellation started: clientId={}, bookingId={}", idClient, idBooking);
         Booking booking = getBookingById(idBooking);
         if (!idClient.equals(booking.getIdClient())) {
             throw Status.PERMISSION_DENIED
@@ -153,7 +157,7 @@ public class BookingServiceImpl implements BookingService {
                         idClient, SubscriptionStatus.ACTIVE).orElse(null);
         boolean released;
         try {
-            released = callWorkout(() -> workoutService
+            released = callWorkout("ReleaseSlot", () -> workoutService
                     .withDeadlineAfter(WORKOUT_RPC_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                     .releaseSlot(ReleaseSlotRequest.newBuilder()
                             .setIdWorkout(booking.getIdWorkout()).build())).getSuccess();
@@ -176,10 +180,12 @@ public class BookingServiceImpl implements BookingService {
                         activeSubscription.getRemainingSessions() + 1);
                 subscriptionRepository.save(activeSubscription);
             }
-            return bookingRepository.save(booking);
+            Booking saved = bookingRepository.save(booking);
+            log.info("Booking cancellation completed: clientId={}, bookingId={}", idClient, idBooking);
+            return saved;
         } catch (RuntimeException exception) {
             try {
-                callWorkout(() -> workoutService
+                callWorkout("ReserveSlot compensation", () -> workoutService
                         .withDeadlineAfter(WORKOUT_RPC_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                         .reserveSlot(ReserveSlotRequest.newBuilder()
                                 .setIdWorkout(booking.getIdWorkout()).build()));
@@ -194,7 +200,7 @@ public class BookingServiceImpl implements BookingService {
         StatusRuntimeException lastFailure = null;
         for (int attempt = 1; attempt <= AVAILABILITY_MAX_ATTEMPTS; attempt++) {
             try {
-                return callWorkout(() -> workoutService
+                return callWorkout("CheckAvailability", () -> workoutService
                         .withDeadlineAfter(WORKOUT_RPC_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                         .checkAvailability(CheckAvailabilityRequest.newBuilder()
                                 .setIdWorkout(idWorkout).build()));
@@ -212,12 +218,22 @@ public class BookingServiceImpl implements BookingService {
         throw lastFailure;
     }
 
-    private <T> T callWorkout(Supplier<T> call) {
+    private <T> T callWorkout(String operation, Supplier<T> call) {
+        long startedAt = System.nanoTime();
+        log.debug("Calling Workout Service RPC {}", operation);
         try {
-            return call.get();
+            T result = call.get();
+            log.info("Workout Service RPC completed: operation={}, durationMs={}", operation,
+                    TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt));
+            return result;
         } catch (StatusRuntimeException exception) {
+            log.warn("Workout Service RPC failed: operation={}, status={}, durationMs={}", operation,
+                    exception.getStatus().getCode(),
+                    TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt));
             throw exception;
         } catch (RuntimeException exception) {
+            log.error("Workout Service RPC failed: operation={}, durationMs={}", operation,
+                    TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedAt), exception);
             throw Status.UNAVAILABLE.withDescription("Workout Service is unavailable")
                     .withCause(exception).asRuntimeException();
         }
@@ -246,7 +262,7 @@ public class BookingServiceImpl implements BookingService {
             public void afterCompletion(int status) {
                 if (status != STATUS_COMMITTED) {
                     try {
-                        callWorkout(() -> workoutService
+                        callWorkout("ReleaseSlot compensation", () -> workoutService
                                 .withDeadlineAfter(WORKOUT_RPC_TIMEOUT_MS, TimeUnit.MILLISECONDS)
                                 .releaseSlot(ReleaseSlotRequest.newBuilder()
                                         .setIdWorkout(idWorkout).build()));

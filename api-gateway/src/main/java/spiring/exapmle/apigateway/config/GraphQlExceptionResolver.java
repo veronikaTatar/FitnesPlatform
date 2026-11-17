@@ -5,6 +5,8 @@ import graphql.GraphqlErrorBuilder;
 import graphql.schema.DataFetchingEnvironment;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.graphql.execution.DataFetcherExceptionResolverAdapter;
 import org.springframework.graphql.execution.ErrorType;
 import org.springframework.stereotype.Component;
@@ -13,12 +15,15 @@ import java.util.Map;
 
 @Component
 public class GraphQlExceptionResolver extends DataFetcherExceptionResolverAdapter {
+    private static final Logger log = LoggerFactory.getLogger(GraphQlExceptionResolver.class);
 
     @Override
     protected GraphQLError resolveToSingleError(Throwable ex, DataFetchingEnvironment env) {
         StatusRuntimeException grpcException = findGrpcException(ex);
         if (grpcException != null) {
             Status.Code code = grpcException.getStatus().getCode();
+            log.warn("GraphQL field {} failed due to gRPC status {}: {}",
+                    env.getField().getName(), code, grpcException.getStatus().getDescription());
             ErrorType errorType = switch (code) {
                 case NOT_FOUND -> ErrorType.NOT_FOUND;
                 case INVALID_ARGUMENT, FAILED_PRECONDITION, PERMISSION_DENIED -> ErrorType.BAD_REQUEST;
@@ -40,6 +45,7 @@ public class GraphQlExceptionResolver extends DataFetcherExceptionResolverAdapte
         }
         // Раскрываем сообщения RuntimeException клиенту
         if (ex instanceof RuntimeException) {
+            log.error("GraphQL field {} failed", env.getField().getName(), ex);
             return GraphqlErrorBuilder.newError()
                     .message(ex.getMessage())
                     .path(env.getExecutionStepInfo().getPath())

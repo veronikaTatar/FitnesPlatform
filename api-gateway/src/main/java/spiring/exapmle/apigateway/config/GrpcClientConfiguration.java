@@ -10,7 +10,13 @@ import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
+import io.grpc.Status;
+import io.grpc.ForwardingClientCall;
+import io.grpc.ForwardingClientCallListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
@@ -21,6 +27,7 @@ import java.util.Map;
 
 @Configuration
 public class GrpcClientConfiguration {
+    private static final Logger log = LoggerFactory.getLogger(GrpcClientConfiguration.class);
     @Value("${resilience.grpc.deadline-ms:2500}")
     private long deadlineMs;
 
@@ -92,7 +99,7 @@ public class GrpcClientConfiguration {
                         target.substring(0, separator),
                         Integer.parseInt(target.substring(separator + 1)))
                 .usePlaintext()
-                .intercept(deadlineInterceptor(deadlineMs));
+                .intercept(deadlineInterceptor(deadlineMs), loggingInterceptor());
         if (!retryableMethods.isEmpty()) {
             List<Map<String, Object>> methodConfigs = retryableMethods.stream()
                     .map(method -> Map.<String, Object>of(
@@ -107,6 +114,41 @@ public class GrpcClientConfiguration {
             builder.enableRetry().defaultServiceConfig(Map.of("methodConfig", methodConfigs));
         }
         return builder.build();
+    }
+
+    private static ClientInterceptor loggingInterceptor() {
+        return new ClientInterceptor() {
+            @Override
+            public <RequestT, ResponseT> ClientCall<RequestT, ResponseT> interceptCall(
+                    MethodDescriptor<RequestT, ResponseT> method,
+                    io.grpc.CallOptions callOptions,
+                    Channel next) {
+                ClientCall<RequestT, ResponseT> call = next.newCall(method, callOptions);
+                return new ForwardingClientCall.SimpleForwardingClientCall<>(call) {
+                    private final long startedAt = System.nanoTime();
+
+                    @Override
+                    public void start(Listener<ResponseT> listener, Metadata headers) {
+                        log.debug("gRPC call started: {}", method.getFullMethodName());
+                        super.start(new ForwardingClientCallListener.SimpleForwardingClientCallListener<>(listener) {
+                            @Override
+                            public void onClose(Status status, Metadata trailers) {
+                                long elapsedMs = java.util.concurrent.TimeUnit.NANOSECONDS.toMillis(
+                                        System.nanoTime() - startedAt);
+                                if (status.isOk()) {
+                                    log.info("gRPC call completed: method={}, status={}, durationMs={}",
+                                            method.getFullMethodName(), status.getCode(), elapsedMs);
+                                } else {
+                                    log.warn("gRPC call failed: method={}, status={}, description={}, durationMs={}",
+                                            method.getFullMethodName(), status.getCode(), status.getDescription(), elapsedMs);
+                                }
+                                super.onClose(status, trailers);
+                            }
+                        }, headers);
+                    }
+                };
+            }
+        };
     }
 
     private static ClientInterceptor deadlineInterceptor(long deadlineMs) {
