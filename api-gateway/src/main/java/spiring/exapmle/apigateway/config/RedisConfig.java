@@ -1,26 +1,34 @@
 package spiring.exapmle.apigateway.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CachingConfigurer;
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.cache.interceptor.CacheErrorHandler;
+import org.springframework.cache.interceptor.KeyGenerator;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.cache.RedisCacheConfiguration;
 import org.springframework.data.redis.cache.RedisCacheManager;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
+import org.springframework.data.redis.serializer.Jackson2JsonRedisSerializer;
 import org.springframework.data.redis.serializer.RedisSerializationContext;
+import spiring.exapmle.apigateway.dto.ProgressDto;
+import spiring.exapmle.apigateway.dto.TrainingProgramDto;
+import spiring.exapmle.apigateway.dto.WorkoutDto;
 
 import java.time.Duration;
+import java.util.List;
 
 @Configuration
 @EnableCaching
-public class RedisConfig {
+public class RedisConfig implements CachingConfigurer {
     @Bean
-    public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
+    public CacheManager cacheManager(RedisConnectionFactory connectionFactory, ObjectMapper mapper) {
         RedisCacheConfiguration defaults = RedisCacheConfiguration.defaultCacheConfig()
                 .entryTtl(Duration.ofMinutes(2))
                 .disableCachingNullValues()
@@ -29,16 +37,29 @@ public class RedisConfig {
 
         return RedisCacheManager.builder(connectionFactory)
                 .cacheDefaults(defaults)
-                .withCacheConfiguration("programs", defaults.entryTtl(Duration.ofMinutes(5)))
+                .withCacheConfiguration("programs",
+                        listValues(defaults.entryTtl(Duration.ofMinutes(5)), mapper, TrainingProgramDto.class))
                 .withCacheConfiguration("program", defaults.entryTtl(Duration.ofMinutes(5)))
-                .withCacheConfiguration("workouts", defaults)
+                .withCacheConfiguration("workouts", listValues(defaults, mapper, WorkoutDto.class))
                 .withCacheConfiguration("workout", defaults)
-                .withCacheConfiguration("progress", defaults)
+                .withCacheConfiguration("progress", listValues(defaults, mapper, ProgressDto.class))
                 .build();
     }
 
+    private static RedisCacheConfiguration listValues(
+            RedisCacheConfiguration config, ObjectMapper mapper, Class<?> elementType) {
+        var type = mapper.getTypeFactory().constructCollectionType(List.class, elementType);
+        return config.serializeValuesWith(RedisSerializationContext.SerializationPair
+                .fromSerializer(new Jackson2JsonRedisSerializer<>(mapper, type)));
+    }
+
     @Bean
-    public CacheErrorHandler cacheErrorHandler() {
+    public KeyGenerator listCacheKeyGenerator(ObjectMapper mapper) {
+        return (target, method, params) -> mapper.valueToTree(params).toString();
+    }
+
+    @Override
+    public CacheErrorHandler errorHandler() {
         return new LoggingCacheErrorHandler();
     }
 
